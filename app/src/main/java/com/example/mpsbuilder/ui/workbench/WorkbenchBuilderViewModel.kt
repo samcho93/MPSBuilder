@@ -1004,6 +1004,12 @@ class WorkbenchBuilderViewModel @Inject constructor(
         } catch (_: Exception) { }
     }
 
+    /** 래더 편집기에서 적용 */
+    fun importLadderFromEditor(rungs: List<LadderRung>, labels: Map<String, String>) {
+        _ladderRungs.value = rungs
+        _ladderIoLabels.value = labels
+    }
+
     /** MELSEC CSV 파일 로드 (GX-Works2 형식) */
     fun importLadderCsv(csvText: String) {
         try {

@@ -51,6 +51,7 @@ fun WorkbenchBuilderScreen(
     var showTestPanel by remember { mutableStateOf(false) }
     var showLadderPanel by remember { mutableStateOf(false) }
     var showHelp by remember { mutableStateOf(false) }
+    var showLadderEditor by remember { mutableStateOf(false) }
 
     // 래더 파일 선택 런처
     val ladderFileLauncher = rememberLauncherForActivityResult(
@@ -194,6 +195,12 @@ fun WorkbenchBuilderScreen(
                             tint = if (hasLadder) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurface
                         )
+                    }
+
+                    // 래더 편집기 열기
+                    IconButton(onClick = { showLadderEditor = true }) {
+                        Icon(Icons.Default.Edit, "래더 편집기",
+                            tint = MaterialTheme.colorScheme.primary)
                     }
 
                     // 래더 보기 토글 (래더가 있을 때만)
@@ -442,6 +449,20 @@ fun WorkbenchBuilderScreen(
     }
     if (showHelp) {
         com.example.mpsbuilder.ui.help.HelpDialog(onDismiss = { showHelp = false })
+    }
+    if (showLadderEditor) {
+        com.example.mpsbuilder.ui.ladder.LadderEditorDialog(
+            initialRungs = ladderRungs,
+            initialLabels = ladderIoLabels,
+            onApply = { rungs, labels ->
+                // 편집기에서 적용 → MPS Builder에 반영
+                viewModel.importLadderFromEditor(rungs, labels)
+                showLadderEditor = false
+                showLadderPanel = true
+                Toast.makeText(context, "래더 적용 완료", Toast.LENGTH_SHORT).show()
+            },
+            onDismiss = { showLadderEditor = false }
+        )
     }
 }
 

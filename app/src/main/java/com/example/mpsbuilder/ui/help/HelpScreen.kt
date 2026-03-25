@@ -47,7 +47,7 @@ fun HelpDialog(onDismiss: () -> Unit) {
 
                 // 탭
                 var selectedTab by remember { mutableIntStateOf(0) }
-                val tabs = listOf("개요", "사용 설명서", "위젯 가이드", "래더 연동", "기술 스택")
+                val tabs = listOf("개요", "사용 설명서", "위젯 가이드", "래더 연동", "래더 편집기", "기술 스택")
 
                 ScrollableTabRow(selectedTabIndex = selectedTab) {
                     tabs.forEachIndexed { idx, title ->
@@ -72,7 +72,8 @@ fun HelpDialog(onDismiss: () -> Unit) {
                         1 -> UserGuideTab()
                         2 -> WidgetGuideTab()
                         3 -> LadderGuideTab()
-                        4 -> TechStackTab()
+                        4 -> LadderEditorTab()
+                        5 -> TechStackTab()
                     }
                 }
             }
@@ -98,6 +99,7 @@ private fun OverviewTab() {
         "공작물(금속/비금속) 투입, 이송, 감지, 적재 시뮬레이션",
         "PLCSimul JSON 및 MELSEC CSV 래더 파일 읽기",
         "래더 다이어그램 실시간 표시 (전류 흐름 하이라이트)",
+        "내장 래더 편집기 (접점/코일/타이머/카운터/FB 28종, Undo/Redo)",
         "레이아웃 저장/불러오기 (.mps 파일)",
         "자동 저장 (앱 전환 시 상태 유지)"
     ))
@@ -283,6 +285,111 @@ private fun LadderGuideTab() {
 }
 
 @Composable
+private fun LadderEditorTab() {
+    SectionTitle("래더 편집기 개요")
+    Body(
+        "앱 내에서 풀스크린 팝업으로 MELSEC 래더 프로그램을 직접 편집할 수 있습니다. " +
+        "상단 바의 연필 아이콘을 탭하면 래더 편집기가 열립니다."
+    )
+
+    SectionTitle("요소 배치")
+    SubTitle("접점 (입력)")
+    BulletList(listOf(
+        "┤ ├  a접점 (Normally Open) — 주소가 ON이면 전류 통과",
+        "┤/├  b접점 (Normally Closed) — 주소가 OFF이면 전류 통과",
+        "┤P├  상승에지 접점 — OFF→ON 변화 시 1스캔만 통과",
+        "┤F├  하강에지 접점 — ON→OFF 변화 시 1스캔만 통과"
+    ))
+
+    SubTitle("코일 (출력)")
+    BulletList(listOf(
+        "( )  OUT — 조건 충족 시 출력 ON, 미충족 시 OFF",
+        "(S)  SET — 조건 충족 시 출력 ON 유지 (래치)",
+        "(R)  RST — 조건 충족 시 출력 OFF (래치 해제)",
+        "(P)  PLS — 조건 상승에지에서 1스캔 펄스",
+        "(F)  PLF — 조건 하강에지에서 1스캔 펄스"
+    ))
+
+    SubTitle("타이머 / 카운터")
+    BulletList(listOf(
+        "T — 타이머: 조건 ON 동안 시간 카운트, 프리셋 x 100ms 도달 시 접점 ON",
+        "C — 카운터: 조건 상승에지마다 카운트 증가, 프리셋 도달 시 접점 ON"
+    ))
+
+    SubTitle("특수 릴레이 (SM)")
+    BulletList(listOf(
+        "SM400 — 항상 ON",
+        "SM401 — 항상 OFF",
+        "SM412 — 0.5초 클록 (500ms마다 ON/OFF 반전)",
+        "SM413 — 1초 클록",
+        "SM402 — RUN 후 1스캔만 ON",
+        "기타: SM409~SM431 (14종 제공)"
+    ))
+
+    SubTitle("펑션블록 (F(x))")
+    Body("28종 명령어를 카테고리별로 선택할 수 있습니다:")
+    BulletList(listOf(
+        "전송: MOV, DMOV, BMOV, FMOV, MOVP",
+        "비교: CMP, DCMP",
+        "사칙연산: ADD, SUB, MUL, DIV, DADD, DSUB",
+        "비트: WAND, WOR, WXOR, CML",
+        "시프트: SHL, SHR, ROL, ROR",
+        "변환: BCD, BIN, DECO, ENCO",
+        "증감: INC, DEC",
+        "제어: CALL, FEND"
+    ))
+
+    SectionTitle("편집 조작")
+    SubTitle("셀 선택 및 편집")
+    BulletList(listOf(
+        "셀을 탭하면 선택됩니다 (파란색 하이라이트)",
+        "선택된 셀에서 도구바 버튼을 누르면 요소가 배치됩니다",
+        "셀을 더블탭하면 속성 편집 다이얼로그가 열립니다",
+        "IO 주소, 라벨, 타이머 프리셋, FB 오퍼랜드를 편집할 수 있습니다"
+    ))
+
+    SubTitle("구조 편집")
+    BulletList(listOf(
+        "+행 — 선택된 행 아래에 새 행 추가 (OR 분기), 선택 없으면 새 런그 추가",
+        "-행 — 선택된 행 삭제 (행이 1개뿐이면 런그 전체 삭제)",
+        "요소삭제 — 선택된 셀의 요소 삭제",
+        "━ (수평선) — 접점 사이 연결선 배치",
+        "┃ (수직선) — OR 분기를 위한 수직 연결선 토글"
+    ))
+
+    SubTitle("Undo / Redo")
+    Body("최대 30단계까지 실행취소/다시실행이 가능합니다.")
+
+    SubTitle("다중 선택")
+    Body("'다중' 버튼을 ON하면 여러 셀을 동시에 선택할 수 있습니다. " +
+         "선택된 셀들을 일괄 삭제할 수 있습니다.")
+
+    SubTitle("IO 자동 채번")
+    Body("요소를 배치할 때 IO 주소가 자동으로 할당됩니다. " +
+         "접점은 X000부터, 코일은 Y000부터 순차 할당됩니다. " +
+         "더블탭으로 언제든 수정 가능합니다.")
+
+    SectionTitle("파일 메뉴")
+    BulletList(listOf(
+        "새 프로젝트 — 모든 런그를 초기화 (수정사항 있으면 확인 팝업)",
+        "JSON 열기 — PLCSimul 프로젝트 파일 불러오기",
+        "JSON 저장 — 현재 래더를 JSON 파일로 저장",
+        "CSV 불러오기 — GX-Works2 CSV 파일 불러오기 (UTF-16LE/UTF-8 자동 감지)",
+        "CSV 내보내기 — GX-Works2 호환 CSV로 내보내기 (UTF-16LE)"
+    ))
+
+    SectionTitle("MPS Builder 연동")
+    Body("편집기 우상단의 [적용] 버튼을 누르면, 편집한 래더가 MPS Builder의 " +
+         "래더 뷰어에 즉시 반영되고 테스트 모드에서 시뮬레이션에 사용됩니다.")
+    BulletList(listOf(
+        "위젯의 IO 주소(X000, Y000 등)와 래더의 IO가 자동 매핑",
+        "래더의 Y 출력 → 해당 위젯 동작 (실린더 전진, 모터 회전 등)",
+        "위젯의 X 입력 (센서 감지, LS 등) → 래더에 반영",
+        "기존 래더가 로드된 상태에서 편집기를 열면 해당 래더가 로드됨"
+    ))
+}
+
+@Composable
 private fun TechStackTab() {
     SectionTitle("기술 스택")
 
@@ -321,7 +428,8 @@ private fun TechStackTab() {
         "data/ladder/ — 래더 모델, 시뮬레이터, CSV 파서",
         "data/repository/ — 레이아웃 저장소",
         "di/ — Hilt DI 모듈",
-        "ui/ladder/ — 래더 다이어그램 뷰어",
+        "ui/ladder/ — 래더 뷰어 + 편집기 (도구바, 팔레트, 속성편집)",
+        "domain/usecase/ — IO 자동 채번",
         "ui/workbench/ — 작업대 빌더 메인 화면",
         "ui/workbench/canvas/ — 캔버스, 격자, 오버레이",
         "ui/workbench/widgets/ — 위젯 렌더러, 팔레트, 속성패널",

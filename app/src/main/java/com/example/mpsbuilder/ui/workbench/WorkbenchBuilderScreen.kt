@@ -50,6 +50,7 @@ fun WorkbenchBuilderScreen(
     var showLoadDialog by remember { mutableStateOf(false) }
     var showTestPanel by remember { mutableStateOf(false) }
     var showLadderPanel by remember { mutableStateOf(false) }
+    var showHelp by remember { mutableStateOf(false) }
 
     // 래더 파일 선택 런처
     val ladderFileLauncher = rememberLauncherForActivityResult(
@@ -256,6 +257,10 @@ fun WorkbenchBuilderScreen(
                             Icon(Icons.Default.FolderOpen, "불러오기")
                         }
                     }
+                    // 도움말 (항상 표시)
+                    IconButton(onClick = { showHelp = true }) {
+                        Icon(Icons.Default.HelpOutline, "도움말")
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = if (isTestMode)
@@ -434,6 +439,9 @@ fun WorkbenchBuilderScreen(
             onForceOutput = { addr, value -> viewModel.forceOutput(addr, value) },
             onClose = { showTestPanel = false }
         )
+    }
+    if (showHelp) {
+        com.example.mpsbuilder.ui.help.HelpDialog(onDismiss = { showHelp = false })
     }
 }
 

@@ -9,7 +9,7 @@ import com.example.mpsbuilder.ui.workbench.model.WorkpieceShape
 
 object WorkpieceRenderer {
 
-    private const val WP_SIZE = 24f
+    private const val WP_SIZE = 36f  // 1.5배 (24→36)
 
     fun draw(
         scope: DrawScope,

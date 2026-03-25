@@ -158,8 +158,9 @@ class WorkbenchBuilderViewModel @Inject constructor(
             _timerValues.value = emptyMap()
             _counterValues.value = emptyMap()
             _cylinderProgress.value = emptyMap()
-            // 공급기 스택 복구 (테스트 전 수량으로)
+            // 공급기 스택 복구 + 적재함 비우기
             restoreSupplierStacks()
+            clearStorageBins()
         }
     }
 
@@ -172,6 +173,19 @@ class WorkbenchBuilderViewModel @Inject constructor(
                     if (w.widgetType == WidgetType.WORKPIECE_SUPPLIER) {
                         val backup = _supplierStackBackup[w.id]
                         if (backup != null) w.copy(workpieceStack = backup) else w
+                    } else w
+                }
+            )
+        }
+    }
+
+    /** 적재함 내용 비우기 */
+    private fun clearStorageBins() {
+        _layout.update { layout ->
+            layout.copy(
+                placedWidgets = layout.placedWidgets.map { w ->
+                    if (w.widgetType == WidgetType.STORAGE_BIN && w.storedWorkpieces.isNotEmpty()) {
+                        w.copy(storedWorkpieces = emptyList())
                     } else w
                 }
             )
@@ -669,7 +683,7 @@ class WorkbenchBuilderViewModel @Inject constructor(
             .filter { it.widgetType == WidgetType.CONVEYOR }
             .filter { conv ->
                 val cs = WidgetRenderer.getWidgetSize(conv)
-                val margin = 50f
+                val margin = 80f  // 센서가 컨베이어 옆에 배치되어도 찾을 수 있도록
                 x >= conv.positionX - margin && x <= conv.positionX + cs.width + margin &&
                         y >= conv.positionY - margin && y <= conv.positionY + cs.height + margin
             }
@@ -720,7 +734,7 @@ class WorkbenchBuilderViewModel @Inject constructor(
 
         // 0.5) 실린더 progress 애니메이션 (부드러운 전후진)
         //      50ms 틱, 전체 이동 ~500ms → speed = 50/500 = 0.1 per tick
-        val cylSpeed = 0.06f  // 느리게: ~830ms 완전 이동
+        val cylSpeed = 0.12f  // ~415ms 완전 이동
         _cylinderProgress.update { progMap ->
             val newMap = progMap.toMutableMap()
             widgets.filter { it.widgetType == WidgetType.CYLINDER }.forEach { cyl ->
@@ -748,6 +762,71 @@ class WorkbenchBuilderViewModel @Inject constructor(
                 newMap[cyl.id] = next
             }
             newMap
+        }
+
+        // 0.7) 실린더 전진 중 → 실린더 앞 영역의 공작물을 밀어냄 (적재함 또는 제거)
+        //      실린더 중심 기준 넓은 영역에서 공작물 탐지 (회전 무관)
+        val updatedCylProg = _cylinderProgress.value
+        val storageBins = widgets.filter { it.widgetType == WidgetType.STORAGE_BIN }
+        widgets.filter { it.widgetType == WidgetType.CYLINDER }.forEach { cyl ->
+            val prog = updatedCylProg[cyl.id] ?: 0f
+            val prevProg = cylProgMap[cyl.id] ?: 0f
+            val isExtending = prog > prevProg && prog > 0.5f  // 50% 이상 전진 중
+
+            if (isExtending) {
+                val cylSize = WidgetRenderer.getWidgetSize(cyl)
+                val cylCX = cyl.positionX + cylSize.width / 2f
+                val cylCY = cyl.positionY + cylSize.height / 2f
+                // 실린더 주변 넓은 영역 (실린더 크기 + 여유)
+                val rangeX = cylSize.width * 0.8f
+                val rangeY = cylSize.height * 1.5f
+
+                _workpieces.update { wps ->
+                    wps.mapNotNull { wp ->
+                        val dx = kotlin.math.abs(wp.positionX - cylCX)
+                        val dy = kotlin.math.abs(wp.positionY - cylCY)
+                        if (dx < rangeX && dy < rangeY) {
+                            // 적재함 찾기: 실린더 → 컨베이어 넘어 반대편에 있는 적재함
+                            // 실린더 전진 방향(실린더→공작물 방향)의 연장선에 있는 적재함
+                            val pushDirX = wp.positionX - cylCX  // 실린더→공작물 방향
+                            val pushDirY = wp.positionY - cylCY
+                            val nearBin = storageBins
+                                .filter { bin ->
+                                    val bs = WidgetRenderer.getWidgetSize(bin)
+                                    val bcx = bin.positionX + bs.width / 2f
+                                    val bcy = bin.positionY + bs.height / 2f
+                                    // 실린더→적재함 방향이 실린더→공작물 방향과 같은 쪽
+                                    val toBinX = bcx - cylCX
+                                    val toBinY = bcy - cylCY
+                                    val sameDir = (pushDirX * toBinX + pushDirY * toBinY) > 0
+                                    val dist = kotlin.math.sqrt(toBinX * toBinX + toBinY * toBinY)
+                                    sameDir && dist < 300f
+                                }
+                                .minByOrNull { bin ->
+                                    val bs = WidgetRenderer.getWidgetSize(bin)
+                                    val bcx = bin.positionX + bs.width / 2f
+                                    val bcy = bin.positionY + bs.height / 2f
+                                    (wp.positionX - bcx) * (wp.positionX - bcx) +
+                                        (wp.positionY - bcy) * (wp.positionY - bcy)
+                                }
+
+                            if (nearBin != null) {
+                                // 적재함에 담기
+                                _layout.update { lay ->
+                                    lay.copy(placedWidgets = lay.placedWidgets.map { w ->
+                                        if (w.id == nearBin.id) {
+                                            w.copy(storedWorkpieces = w.storedWorkpieces + wp.type)
+                                        } else w
+                                    })
+                                }
+                            }
+                            null  // 공작물 제거 (적재함에 담았거나 밖으로)
+                        } else {
+                            wp  // 범위 밖 → 유지
+                        }
+                    }
+                }
+            }
         }
 
         // 1) 컨베이어 위 공작물 이동 — 벨트 애니메이션(800ms/cycle)과 동기화
@@ -793,11 +872,11 @@ class WorkbenchBuilderViewModel @Inject constructor(
             }.filter { it.conveyorProgress < 1f || it.onConveyorId == null }
         }
 
-        // 2) 센서 감지 — 방향 무관, 컨베이어 위 공작물만 거리 기반 감지
+        // 2) 센서 감지 — 가장 가까운 컨베이어의 공작물이 센서 위치를 지나갈 때 감지
         val sensors = widgets.filter { it.widgetType == WidgetType.SENSOR }
+        val conveyors = widgets.filter { it.widgetType == WidgetType.CONVEYOR }
         val wps = _workpieces.value
         val sensorUpdates = mutableMapOf<String, Boolean>()
-        val detectRange = 25f  // 감지 거리 (dp)
 
         sensors.forEach { sensor ->
             val inAddr = sensor.ioSlots.find { it.key == "IN1" }?.address
@@ -806,20 +885,37 @@ class WorkbenchBuilderViewModel @Inject constructor(
                 val sensorCX = sensor.positionX + ss.width / 2f
                 val sensorCY = sensor.positionY + ss.height / 2f
 
+                // 센서에 가장 가까운 컨베이어 찾기 (센서 위/옆 모두 포함, 넉넉한 범위)
+                val nearConv = findNearestConveyor(sensorCX, sensorCY, widgets)
+
                 val detected = wps.any { wp ->
-                    // 컨베이어 위에 있는 공작물만 감지 대상
                     if (wp.onConveyorId == null) return@any false
 
-                    // 센서 중심과 공작물 사이 거리 (방향 무관)
-                    val dx = wp.positionX - sensorCX
-                    val dy = wp.positionY - sensorCY
-                    val dist = kotlin.math.sqrt(dx * dx + dy * dy)
-                    if (dist > detectRange) return@any false
+                    // 가까운 컨베이어가 있으면 그 컨베이어의 공작물만 체크
+                    if (nearConv != null) {
+                        if (wp.onConveyorId != nearConv.id) return@any false
+
+                        // 컨베이어 이동축 기준으로 공작물이 센서 X 또는 Y를 지나는지
+                        val dir = nearConv.conveyorConfig?.direction ?: ConveyorDirection.RIGHT
+                        val tolerance = 18f
+                        val pass = when (dir) {
+                            ConveyorDirection.RIGHT, ConveyorDirection.LEFT ->
+                                kotlin.math.abs(wp.positionX - sensorCX) < tolerance
+                            ConveyorDirection.UP, ConveyorDirection.DOWN ->
+                                kotlin.math.abs(wp.positionY - sensorCY) < tolerance
+                        }
+                        if (!pass) return@any false
+                    } else {
+                        // 컨베이어 없으면 모든 공작물 거리 기반
+                        val dx = wp.positionX - sensorCX
+                        val dy = wp.positionY - sensorCY
+                        if (kotlin.math.sqrt(dx * dx + dy * dy) > 35f) return@any false
+                    }
 
                     // 센서 타입에 따라 공작물 종류 판별
                     when (sensor.sensorType) {
-                        SensorType.PHOTO -> true               // 광전: 전체 감지
-                        SensorType.PROXIMITY -> wp.type == WorkpieceType.METAL  // 근접: 금속만
+                        SensorType.PHOTO -> true
+                        SensorType.PROXIMITY -> wp.type == WorkpieceType.METAL
                     }
                 }
                 sensorUpdates[inAddr] = detected

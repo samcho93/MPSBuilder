@@ -1,9 +1,9 @@
 -- Merging decision tree log ---
 manifest
-ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:2:1-22:12
-INJECTED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:2:1-22:12
-INJECTED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:2:1-22:12
-INJECTED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:2:1-22:12
+ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:2:1-24:12
+INJECTED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:2:1-24:12
+INJECTED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:2:1-24:12
+INJECTED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:2:1-24:12
 MERGED from [androidx.hilt:hilt-navigation-compose:1.2.0] C:\Users\조영준\.gradle\caches\8.9\transforms\33e8b3e94a549a2dd46cf30a20bb8619\transformed\hilt-navigation-compose-1.2.0\AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.hilt:hilt-navigation:1.2.0] C:\Users\조영준\.gradle\caches\8.9\transforms\81c42c7fe7018efe01b37ffd2e62ac5f\transformed\hilt-navigation-1.2.0\AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.navigation:navigation-common:2.8.5] C:\Users\조영준\.gradle\caches\8.9\transforms\cd31eb1360d2eb9fba02616e35ae9edd\transformed\navigation-common-2.8.5\AndroidManifest.xml:17:1-22:12
@@ -79,8 +79,8 @@ MERGED from [com.google.dagger:dagger-lint-aar:2.53.1] C:\Users\조영준\.gradl
 	xmlns:android
 		ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:2:11-69
 application
-ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:4:5-20:19
-INJECTED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:4:5-20:19
+ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:4:5-22:19
+INJECTED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:4:5-22:19
 MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\조영준\.gradle\caches\8.9\transforms\f647bb52e72740745c3ec684a382b7dc\transformed\emoji2-1.3.0\AndroidManifest.xml:23:5-33:19
 MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\조영준\.gradle\caches\8.9\transforms\f647bb52e72740745c3ec684a382b7dc\transformed\emoji2-1.3.0\AndroidManifest.xml:23:5-33:19
 MERGED from [androidx.lifecycle:lifecycle-process:2.8.7] C:\Users\조영준\.gradle\caches\8.9\transforms\6f6f62ed0fe1ce89f22e9a226b060ed1\transformed\lifecycle-process-2.8.7\AndroidManifest.xml:23:5-33:19
@@ -100,35 +100,39 @@ MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\�
 	android:appComponentFactory
 		ADDED from [androidx.core:core:1.15.0] C:\Users\조영준\.gradle\caches\8.9\transforms\0139fe5af2296097784f57930c0c9d6f\transformed\core-1.15.0\AndroidManifest.xml:28:18-86
 	android:supportsRtl
-		ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:8:9-35
+		ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:10:9-35
 	android:label
-		ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:7:9-41
+		ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:9:9-41
+	android:roundIcon
+		ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:8:9-54
+	android:icon
+		ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:7:9-43
 	android:allowBackup
 		ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:6:9-35
 	android:theme
-		ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:9:9-48
+		ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:11:9-48
 	android:name
 		ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:5:9-46
 activity#com.example.mpsbuilder.MainActivity
-ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:10:9-19:20
+ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:12:9-21:20
 	android:screenOrientation
-		ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:13:13-50
+		ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:15:13-50
 	android:exported
-		ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:12:13-36
+		ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:14:13-36
 	android:configChanges
-		ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:14:13-87
+		ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:16:13-87
 	android:name
-		ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:11:13-41
+		ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:13:13-41
 intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
-ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:15:13-18:29
+ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:17:13-20:29
 action#android.intent.action.MAIN
-ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:16:17-69
+ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:18:17-69
 	android:name
-		ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:16:25-66
+		ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:18:25-66
 category#android.intent.category.LAUNCHER
-ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:17:17-77
+ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:19:17-77
 	android:name
-		ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:17:27-74
+		ADDED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml:19:27-74
 uses-sdk
 INJECTED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from D:\Work\Android\MPSBuilder\app\src\main\AndroidManifest.xml

@@ -33,7 +33,7 @@ object WidgetRenderer {
             WidgetType.MOTOR -> Size(70f * s, 70f * s)
             WidgetType.SENSOR -> Size(24f * s, 50f * s)
             WidgetType.BUZZER -> Size(50f * s, 50f * s)
-            WidgetType.STORAGE_BIN -> Size(70f * s, 60f * s)
+            WidgetType.STORAGE_BIN -> Size(90f * s, 80f * s)
             WidgetType.SIGNAL_TOWER -> Size(30f * s, (20f + widget.signalTowerTiers.count * 22f) * s)
             else -> Size(BASE_WIDTH * s, BASE_HEIGHT * s)
         }
@@ -666,19 +666,21 @@ object WidgetRenderer {
             Size(w - wallThick * 2, h - wallThick * 2),
             CornerRadius(2f))
 
-        // 적재된 공작물 표시
-        val wpSize = minOf(w, h) * 0.18f
-        val cols = ((w - wallThick * 2) / (wpSize + 2f)).toInt().coerceAtLeast(1)
+        // 적재된 공작물 표시 (실제 크기 = 36dp 기준, 적재함 스케일 반영)
+        val realWpSize = 36f  // WorkpieceRenderer.WP_SIZE와 동일
+        val gap = 3f
+        val innerW = w - wallThick * 2 - 4f
+        val cols = ((innerW) / (realWpSize + gap)).toInt().coerceAtLeast(1)
         stored.forEachIndexed { idx, wpType ->
             val col = idx % cols
             val row = idx / cols
-            val px = wallThick + 3f + col * (wpSize + 2f)
-            val py = wallThick + 3f + row * (wpSize + 2f)
-            if (py + wpSize < h - wallThick) {
+            val px = wallThick + 2f + col * (realWpSize + gap)
+            val py = wallThick + 2f + row * (realWpSize + gap)
+            if (py + realWpSize < h - wallThick) {
                 drawRoundRect(Color(wpType.color),
-                    Offset(px, py), Size(wpSize, wpSize), CornerRadius(2f))
-                drawRoundRect(Color.Black.copy(alpha = 0.2f),
-                    Offset(px, py), Size(wpSize, wpSize), CornerRadius(2f), style = Stroke(0.5f))
+                    Offset(px, py), Size(realWpSize, realWpSize), CornerRadius(3f))
+                drawRoundRect(Color.Black.copy(alpha = 0.25f),
+                    Offset(px, py), Size(realWpSize, realWpSize), CornerRadius(3f), style = Stroke(1f))
             }
         }
 

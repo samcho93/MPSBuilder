@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- PLC 본체 (중앙 직사각형) -->
+    <path
+        android:fillColor="#37474F"
+        android:pathData="M28,30 h52 a4,4 0,0,1 4,4 v40 a4,4 0,0,1 -4,4 h-52 a4,4 0,0,1 -4,-4 v-40 a4,4 0,0,1 4,-4 z" />
+
+    <!-- PLC 상단 바 (진한 색) -->
+    <path
+        android:fillColor="#263238"
+        android:pathData="M28,30 h52 a4,4 0,0,1 4,4 v6 h-60 v-6 a4,4 0,0,1 4,-4 z" />
+
+    <!-- LED 표시등 (상단 바 위) -->
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M34,33 a2,2 0,1,1 4,0 a2,2 0,1,1 -4,0" />
+    <path
+        android:fillColor="#FF9800"
+        android:pathData="M42,33 a2,2 0,1,1 4,0 a2,2 0,1,1 -4,0" />
+    <path
+        android:fillColor="#F44336"
+        android:pathData="M50,33 a2,2 0,1,1 4,0 a2,2 0,1,1 -4,0" />
+
+    <!-- 입력 단자 (좌측 3개) -->
+    <path
+        android:fillColor="#1565C0"
+        android:pathData="M30,44 h8 v5 h-8 z" />
+    <path
+        android:fillColor="#1565C0"
+        android:pathData="M30,52 h8 v5 h-8 z" />
+    <path
+        android:fillColor="#1565C0"
+        android:pathData="M30,60 h8 v5 h-8 z" />
+
+    <!-- 입력 라벨 -->
+    <path
+        android:fillColor="#90CAF9"
+        android:pathData="M32,46 h4 v1 h-4 z" />
+    <path
+        android:fillColor="#90CAF9"
+        android:pathData="M32,54 h4 v1 h-4 z" />
+    <path
+        android:fillColor="#90CAF9"
+        android:pathData="M32,62 h4 v1 h-4 z" />
+
+    <!-- 출력 단자 (우측 3개) -->
+    <path
+        android:fillColor="#E65100"
+        android:pathData="M70,44 h8 v5 h-8 z" />
+    <path
+        android:fillColor="#E65100"
+        android:pathData="M70,52 h8 v5 h-8 z" />
+    <path
+        android:fillColor="#E65100"
+        android:pathData="M70,60 h8 v5 h-8 z" />
+
+    <!-- 출력 라벨 -->
+    <path
+        android:fillColor="#FFCC80"
+        android:pathData="M72,46 h4 v1 h-4 z" />
+    <path
+        android:fillColor="#FFCC80"
+        android:pathData="M72,54 h4 v1 h-4 z" />
+    <path
+        android:fillColor="#FFCC80"
+        android:pathData="M72,62 h4 v1 h-4 z" />
+
+    <!-- 중앙 디스플레이 -->
+    <path
+        android:fillColor="#1B5E20"
+        android:pathData="M42,44 h24 v10 h-24 z" />
+
+    <!-- 디스플레이 텍스트 "PLC" -->
+    <!-- P -->
+    <path
+        android:fillColor="#69F0AE"
+        android:pathData="M45,46 v6 M45,46 h3 a1.5,1.5 0,0,1 0,3 h-3" />
+    <!-- L -->
+    <path
+        android:fillColor="#69F0AE"
+        android:pathData="M51,46 v6 h3" />
+    <!-- C -->
+    <path
+        android:fillColor="#69F0AE"
+        android:pathData="M60,46 h-3 v6 h3" />
+
+    <!-- 래더 기호 (하단 — 접점+코일) -->
+    <!-- 좌측 버스바 -->
+    <path
+        android:fillColor="#78909C"
+        android:pathData="M42,57 v10"
+        android:strokeWidth="1.5"
+        android:strokeColor="#78909C" />
+    <!-- 우측 버스바 -->
+    <path
+        android:fillColor="#78909C"
+        android:pathData="M66,57 v10"
+        android:strokeWidth="1.5"
+        android:strokeColor="#78909C" />
+    <!-- 접점 (a접점) -->
+    <path
+        android:strokeColor="#B0BEC5"
+        android:strokeWidth="1"
+        android:pathData="M42,60 h5 M52,60 h4" />
+    <path
+        android:strokeColor="#B0BEC5"
+        android:strokeWidth="1.2"
+        android:pathData="M47,58 v4 M52,58 v4" />
+    <!-- 수평선 -->
+    <path
+        android:strokeColor="#B0BEC5"
+        android:strokeWidth="1"
+        android:pathData="M56,60 h5" />
+    <!-- 코일 -->
+    <path
+        android:strokeColor="#FF8A65"
+        android:strokeWidth="1"
+        android:fillColor="#00000000"
+        android:pathData="M63,60 a2.5,2.5 0,1,0 0,0.01" />
+    <path
+        android:strokeColor="#B0BEC5"
+        android:strokeWidth="1"
+        android:pathData="M61,60 h-5 M65.5,60 h0.5" />
+
+    <!-- 배선 (입력→PLC) -->
+    <path
+        android:strokeColor="#42A5F5"
+        android:strokeWidth="0.8"
+        android:pathData="M24,46 h6 M24,54 h6 M24,62 h6" />
+    <!-- 배선 (PLC→출력) -->
+    <path
+        android:strokeColor="#FF7043"
+        android:strokeWidth="0.8"
+        android:pathData="M78,46 h6 M78,54 h6 M78,62 h6" />
+
+</vector>

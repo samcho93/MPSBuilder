@@ -1,0 +1,2 @@
+-keep,allowobfuscation,allowshrinking class com.example.mpsbuilder.ui.workbench.WorkbenchBuilderViewModel
+-keep,allowobfuscation,allowshrinking class com.example.mpsbuilder.ui.workbench.WorkbenchBuilderViewModel

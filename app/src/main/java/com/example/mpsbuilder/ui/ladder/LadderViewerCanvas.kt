@@ -176,8 +176,10 @@ fun LadderViewerCanvas(
                         rung.grid.forEachIndexed { rowIdx, row ->
                             val rowY = rowIdx * cellH + cellH / 2f
 
-                            // Bus-to-first connection
-                            if (colPositions.isNotEmpty()) {
+                            // Bus-to-first connection (첫 열(col=0)에 요소가 있을 때만)
+                            val firstElementCol = row.indexOfFirst { it.element != null }
+                            val hasAnyElement = firstElementCol >= 0
+                            if (colPositions.isNotEmpty() && hasAnyElement && firstElementCol == 0) {
                                 drawLine(Color(0xFF555555), Offset(busBarW, rowY),
                                     Offset(busBarW + colPositions[0].x, rowY), strokeWidth = 2f)
                             }
@@ -212,8 +214,9 @@ fun LadderViewerCanvas(
                                 )
                             }
 
-                            // Last-to-right-bus connection
-                            if (colPositions.isNotEmpty()) {
+                            // Last-to-right-bus connection (출력 요소가 있을 때만)
+                            val hasOutput = row.getOrNull(LadderRung.OUTPUT_COL)?.element != null
+                            if (colPositions.isNotEmpty() && hasOutput) {
                                 val last = colPositions.last()
                                 drawLine(Color(0xFF555555),
                                     Offset(busBarW + last.x + last.width, rowY),

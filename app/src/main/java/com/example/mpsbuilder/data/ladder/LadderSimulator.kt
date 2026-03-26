@@ -24,6 +24,28 @@ object LadderSimulator {
         mem["SM400"] = true
         mem["SM401"] = false
 
+        // SM 클럭 릴레이 — dregs[9999]에 누적 ms 저장
+        val clockAccum = (dregs[9999] ?: 0) + scanTimeMs.toInt()
+        dregs[9999] = clockAccum
+        // SM402: RUN 후 1스캔 ON (첫 스캔이면 ON)
+        mem["SM402"] = clockAccum <= scanTimeMs.toInt()
+        // SM403: RUN 후 1스캔 OFF
+        mem["SM403"] = clockAccum > scanTimeMs.toInt()
+        // SM409: 10ms 클럭 (≈ 매 스캔마다 토글)
+        mem["SM409"] = (clockAccum / 10) % 2 == 0
+        // SM410: 100ms 클럭
+        mem["SM410"] = (clockAccum / 100) % 2 == 0
+        // SM411: 200ms 클럭
+        mem["SM411"] = (clockAccum / 200) % 2 == 0
+        // SM412: 500ms (0.5초) 클럭
+        mem["SM412"] = (clockAccum / 500) % 2 == 0
+        // SM413: 1초 클럭
+        mem["SM413"] = (clockAccum / 1000) % 2 == 0
+        // SM414: 2초 클럭
+        mem["SM414"] = (clockAccum / 2000) % 2 == 0
+        // SM415: 2ms 클럭 (≈ 매 스캔마다 토글)
+        mem["SM415"] = (clockAccum / 2) % 2 == 0
+
         rungs.forEach { rung ->
             val conditionResults = evaluateGrid(rung, mem)
 

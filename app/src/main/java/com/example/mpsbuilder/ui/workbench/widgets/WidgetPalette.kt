@@ -39,6 +39,7 @@ fun WidgetPalette(
         WidgetType.BUZZER to Icons.Default.VolumeUp,
         WidgetType.STORAGE_BIN to Icons.Default.Inbox,
         WidgetType.SIGNAL_TOWER to Icons.Default.SignalCellularAlt,
+        WidgetType.TABLE to Icons.Default.TableBar,
     )
 
     Column(

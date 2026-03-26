@@ -399,6 +399,11 @@ fun WorkbenchBuilderScreen(
                     onClearStack = { viewModel.clearSupplierStack(selectedWidget.id) },
                     onWidgetColorChange = { viewModel.setWidgetColor(selectedWidget.id, it) },
                     onSignalTowerTiersChange = { viewModel.setSignalTowerTiers(selectedWidget.id, it) },
+                    onLinkTableToCylinder = { viewModel.linkTableToCylinder(selectedWidget.id, it) },
+                    onLinkTableToConveyor = { viewModel.linkTableToConveyor(selectedWidget.id, it) },
+                    onLinkSupplierToTable = { viewModel.linkSupplierToTable(selectedWidget.id, it) },
+                    conveyors = layout.placedWidgets.filter { it.widgetType == WidgetType.CONVEYOR },
+                    tables = layout.placedWidgets.filter { it.widgetType == WidgetType.TABLE },
                     onDelete = { viewModel.removeWidget(selectedWidget.id) },
                     onOpenTest = { showTestPanel = true }
                 )

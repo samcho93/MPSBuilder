@@ -210,6 +210,16 @@ class LadderEditorViewModel {
             }
         }
 
+        // 접점 배치 후 커서를 다음 열로 자동 이동
+        if (!isOutputElement(assigned)) {
+            val nextCol = pos.col + 1
+            if (nextCol < LadderRung.OUTPUT_COL) {
+                val newPos = CellPosition(pos.rungIdx, pos.row, nextCol)
+                _selectedCell.value = newPos
+                _selectedCells.value = setOf(newPos)
+            }
+        }
+
         _isModified.value = true
         return assigned
     }
@@ -314,9 +324,18 @@ class LadderEditorViewModel {
                 }
                 list
             }
+            // 커서를 새 행의 첫 열로 이동
+            val newPos = CellPosition(pos.rungIdx, pos.row + 1, 0)
+            _selectedCell.value = newPos
+            _selectedCells.value = setOf(newPos)
         } else {
             // 선택 없으면 새 런그 추가
+            val newRungIdx = _rungs.value.size
             _rungs.update { it + LadderRung.empty() }
+            // 커서를 새 런그의 첫 셀로
+            val newPos = CellPosition(newRungIdx, 0, 0)
+            _selectedCell.value = newPos
+            _selectedCells.value = setOf(newPos)
         }
         _isModified.value = true
     }

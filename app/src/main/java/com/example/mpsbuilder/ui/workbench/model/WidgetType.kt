@@ -15,4 +15,5 @@ enum class WidgetType(val label: String) {
     BUZZER("부저"),
     STORAGE_BIN("적재함"),
     SIGNAL_TOWER("경광등"),
+    TABLE("테이블"),
 }

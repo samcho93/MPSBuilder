@@ -66,6 +66,7 @@ data class PlacedWidgetState(
     val widgetColor: Long = 0,  // 0=기본색, 그 외=사용자 선택 색상 (ARGB)
     val signalTowerTiers: SignalTowerTiers = SignalTowerTiers.THREE,
     val storedWorkpieces: List<WorkpieceType> = emptyList(),  // 적재함에 담긴 공작물
+    val linkedConveyorId: String? = null,  // 테이블/공급기 → 컨베이어 연결
 ) {
     val linkedIOAddress: String?
         get() = ioSlots.firstOrNull { it.address.isNotBlank() }?.address
@@ -104,10 +105,11 @@ fun WidgetType.defaultIOSlots(): List<IOSlot> = when (this) {
     WidgetType.PUSH_BUTTON -> listOf(IOSlot("IN1", "접점 입력"))
     WidgetType.SENSOR -> listOf(IOSlot("IN1", "감지 입력"))
     WidgetType.VALVE -> listOf(IOSlot("OUT1", "개방 출력"))
-    WidgetType.WORKPIECE_SUPPLIER -> emptyList()  // 공급기는 IO 없음 — 실린더와 연결
+    WidgetType.WORKPIECE_SUPPLIER -> listOf(IOSlot("IN1", "공작물 유무"))  // 공작물 있으면 ON
     WidgetType.BUZZER -> listOf(IOSlot("OUT1", "부저 출력"))
     WidgetType.STORAGE_BIN -> emptyList()  // 적재함은 IO 없음
     WidgetType.SIGNAL_TOWER -> signalTowerIOSlots(SignalTowerTiers.THREE)
+    WidgetType.TABLE -> emptyList()  // 테이블은 IO 없음 — 실린더+컨베이어 연결
 }
 
 fun signalTowerIOSlots(tiers: SignalTowerTiers): List<IOSlot> {

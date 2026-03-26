@@ -55,7 +55,7 @@ fun LadderEditorCanvas(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(rungHeightDp)
-                        .pointerInput(rungIdx, rungs.size) {
+                        .pointerInput(rungIdx, rung.id, rung.rowCount, displayCols) {
                             detectTapGestures(
                                 onTap = { offset ->
                                     val canvasW = size.width.toFloat()
@@ -134,8 +134,14 @@ fun LadderEditorCanvas(
                         val row = rung.grid.getOrNull(rowIdx) ?: continue
                         val y = rowIdx * cellH + cellH / 2f
 
-                        // 좌측 버스바 → 첫 접점 연결선
-                        drawLine(Color(0xFF555555), Offset(busBarW * 0.3f, y), Offset(busBarW, y), strokeWidth = 2f)
+                        // 행에 요소가 있는지 + 첫 요소 위치 확인
+                        val firstElementCol = row.indexOfFirst { it.element != null }
+                        val hasAnyElement = firstElementCol >= 0
+
+                        // 좌측 버스바 → 첫 접점 연결선 (첫 열에 요소가 있을 때만)
+                        if (hasAnyElement && firstElementCol == 0) {
+                            drawLine(Color(0xFF555555), Offset(busBarW * 0.3f, y), Offset(busBarW, y), strokeWidth = 2f)
+                        }
 
                         // 각 셀
                         for (dispCol in 0 until displayCols) {
@@ -163,25 +169,33 @@ fun LadderEditorCanvas(
                                 )
                             }
 
-                            val addrText = cell.element?.address?.toString() ?: ""
-                            val nameText = if (addrText.isNotBlank()) ioLabels[addrText] ?: "" else ""
+                            // 빈 행에서 빈 셀은 점선 안 그림
+                            if (!hasAnyElement && cell.element == null && !cell.hasBottom) {
+                                // 선택 하이라이트만 표시, 점선 스킵
+                            } else {
+                                val addrText = cell.element?.address?.toString() ?: ""
+                                val nameText = if (addrText.isNotBlank()) ioLabels[addrText] ?: "" else ""
 
-                            ElementRenderer.draw(
-                                scope = this,
-                                element = cell.element,
-                                x = x, y = y,
-                                cellW = cellW, cellH = cellH,
-                                isActive = false,
-                                addressText = addrText,
-                                nameText = nameText,
-                                hasBottom = cell.hasBottom,
-                                isSelected = false  // 이미 위에서 하이라이트
-                            )
+                                ElementRenderer.draw(
+                                    scope = this,
+                                    element = cell.element,
+                                    x = x, y = y,
+                                    cellW = cellW, cellH = cellH,
+                                    isActive = false,
+                                    addressText = addrText,
+                                    nameText = nameText,
+                                    hasBottom = cell.hasBottom,
+                                    isSelected = false  // 이미 위에서 하이라이트
+                                )
+                            }
                         }
 
-                        // 우측 버스바 연결
-                        val rightX = busBarW + (displayCols - 1) * cellW + cellW
-                        drawLine(Color(0xFF555555), Offset(rightX, y), Offset(canvasW - busBarW * 0.3f, y), strokeWidth = 2f)
+                        // 우측 버스바 연결 (출력 요소가 있을 때만)
+                        val hasOutput = row.getOrNull(LadderRung.OUTPUT_COL)?.element != null
+                        if (hasOutput) {
+                            val rightX = busBarW + (displayCols - 1) * cellW + cellW
+                            drawLine(Color(0xFF555555), Offset(rightX, y), Offset(canvasW - busBarW * 0.3f, y), strokeWidth = 2f)
+                        }
                     }
 
                     // 런그 구분선

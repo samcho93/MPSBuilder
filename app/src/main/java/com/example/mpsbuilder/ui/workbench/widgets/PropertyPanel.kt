@@ -40,6 +40,11 @@ fun PropertyPanel(
     onClearStack: (() -> Unit)? = null,
     onWidgetColorChange: ((Long) -> Unit)? = null,
     onSignalTowerTiersChange: ((SignalTowerTiers) -> Unit)? = null,
+    onLinkTableToCylinder: ((String) -> Unit)? = null,
+    onLinkTableToConveyor: ((String) -> Unit)? = null,
+    onLinkSupplierToTable: ((String) -> Unit)? = null,
+    conveyors: List<PlacedWidgetState> = emptyList(),
+    tables: List<PlacedWidgetState> = emptyList(),
     onDelete: () -> Unit,
     onOpenTest: () -> Unit,
     modifier: Modifier = Modifier
@@ -170,14 +175,17 @@ fun PropertyPanel(
         HorizontalDivider()
 
         // ── IO 주소 슬롯 (위젯별 자동 분기)
-        Text("IO 주소", style = MaterialTheme.typography.labelMedium)
-
-        widget.ioSlots.forEach { slot ->
-            IOSlotField(
-                widgetId = widget.id,
-                slot = slot,
-                onAddressChange = { addr -> onIOSlotChange(slot.key, addr) }
-            )
+        // 기존 위젯의 ioSlots가 비어있으면 defaultIOSlots()로 표시
+        val displaySlots = widget.ioSlots.ifEmpty { widget.widgetType.defaultIOSlots() }
+        if (displaySlots.isNotEmpty()) {
+            Text("IO 주소", style = MaterialTheme.typography.labelMedium)
+            displaySlots.forEach { slot ->
+                IOSlotField(
+                    widgetId = widget.id,
+                    slot = slot,
+                    onAddressChange = { addr -> onIOSlotChange(slot.key, addr) }
+                )
+            }
         }
 
         HorizontalDivider()
@@ -367,12 +375,70 @@ fun PropertyPanel(
                     color = MaterialTheme.colorScheme.error)
             }
 
+            // 테이블 연결 (공작물 투입 위치)
+            if (tables.isNotEmpty() && onLinkSupplierToTable != null) {
+                Text("테이블 연결 (투입 위치)", style = MaterialTheme.typography.labelSmall)
+                // "없음" 선택지
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    RadioButton(
+                        selected = widget.linkedConveyorId == null,
+                        onClick = { onLinkSupplierToTable("") }
+                    )
+                    Text("없음 (가장 가까운 컨베이어에 직접 투입)",
+                        style = MaterialTheme.typography.bodySmall)
+                }
+                tables.forEach { tbl ->
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        RadioButton(
+                            selected = widget.linkedConveyorId == tbl.id,
+                            onClick = { onLinkSupplierToTable(tbl.id) }
+                        )
+                        Text("${tbl.label} (${tbl.id})",
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+
             // 스택 표시
             if (widget.workpieceStack.isNotEmpty()) {
                 Text("적재: ${widget.workpieceStack.size}개", style = MaterialTheme.typography.bodySmall)
                 if (onClearStack != null) {
                     TextButton(onClick = onClearStack) {
                         Text("스택 비우기", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+        }
+
+        // 테이블 설정 — 실린더 연결 + 컨베이어 연결
+        if (widget.widgetType == WidgetType.TABLE) {
+            HorizontalDivider()
+            Text("테이블 설정", style = MaterialTheme.typography.labelMedium)
+            Text("실린더가 전진하면 공작물을 컨베이어로 전달", style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+            if (cylinders.isNotEmpty() && onLinkTableToCylinder != null) {
+                Text("실린더 연결", style = MaterialTheme.typography.labelSmall)
+                cylinders.forEach { cyl ->
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        RadioButton(
+                            selected = widget.linkedCylinderId == cyl.id,
+                            onClick = { onLinkTableToCylinder(cyl.id) }
+                        )
+                        Text("${cyl.label} (${cyl.id})", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+
+            if (conveyors.isNotEmpty() && onLinkTableToConveyor != null) {
+                Text("컨베이어 연결", style = MaterialTheme.typography.labelSmall)
+                conveyors.forEach { conv ->
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        RadioButton(
+                            selected = widget.linkedConveyorId == conv.id,
+                            onClick = { onLinkTableToConveyor(conv.id) }
+                        )
+                        Text("${conv.label} (${conv.id})", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }

@@ -35,6 +35,7 @@ object WidgetRenderer {
             WidgetType.BUZZER -> Size(50f * s, 50f * s)
             WidgetType.STORAGE_BIN -> Size(90f * s, 80f * s)
             WidgetType.SIGNAL_TOWER -> Size(30f * s, (20f + widget.signalTowerTiers.count * 22f) * s)
+            WidgetType.TABLE -> Size(100f * s, 60f * s)
             else -> Size(BASE_WIDTH * s, BASE_HEIGHT * s)
         }
     }
@@ -64,11 +65,17 @@ object WidgetRenderer {
                 WidgetType.MOTOR -> drawMotor(size, isOn)
                 WidgetType.SENSOR -> drawSensor(size, isOn, widget.sensorType)
                 WidgetType.VALVE -> drawValve(size, isOn)
-                WidgetType.CONVEYOR -> drawConveyorTopView(size, widget, isOn, beltAnimOffset)
+                WidgetType.CONVEYOR -> {
+                    // IO 미연결이면 항상 회전, IO 연결이면 IO 상태에 따라
+                    val hasIO = widget.ioSlots.any { it.address.isNotBlank() }
+                    val convRunning = if (hasIO) isOn else true
+                    drawConveyorTopView(size, widget, convRunning, beltAnimOffset)
+                }
                 WidgetType.WORKPIECE_SUPPLIER -> drawSupplier(size, widget.workpieceStack)
                 WidgetType.BUZZER -> drawBuzzer(size, isOn, widget.widgetColor)
                 WidgetType.STORAGE_BIN -> drawStorageBin(size, widget.storedWorkpieces)
                 WidgetType.SIGNAL_TOWER -> drawSignalTower(size, widget, memory)
+                WidgetType.TABLE -> drawTable(size)
             }
 
             // 선택 테두리 (파란 박스)
@@ -740,5 +747,50 @@ object WidgetRenderer {
                     Offset(-3f, y - 1f), Size(w + 6f, lightH + 1f), CornerRadius(5f))
             }
         }
+    }
+
+    // ── 테이블 (공작물 전달대)
+    private fun DrawScope.drawTable(size: Size) {
+        val w = size.width
+        val h = size.height
+
+        // 테이블 상판
+        drawRoundRect(
+            color = Color(0xFF8D6E63),
+            topLeft = Offset(0f, h * 0.1f),
+            size = Size(w, h * 0.5f),
+            cornerRadius = CornerRadius(4f)
+        )
+        // 상판 위 무늬
+        drawRoundRect(
+            color = Color(0xFFA1887F),
+            topLeft = Offset(w * 0.05f, h * 0.15f),
+            size = Size(w * 0.9f, h * 0.4f),
+            cornerRadius = CornerRadius(2f)
+        )
+        // 다리 좌
+        drawRect(
+            color = Color(0xFF6D4C41),
+            topLeft = Offset(w * 0.1f, h * 0.6f),
+            size = Size(w * 0.1f, h * 0.38f)
+        )
+        // 다리 우
+        drawRect(
+            color = Color(0xFF6D4C41),
+            topLeft = Offset(w * 0.8f, h * 0.6f),
+            size = Size(w * 0.1f, h * 0.38f)
+        )
+        // T 라벨
+        drawContext.canvas.nativeCanvas.drawText(
+            "T",
+            w / 2f, h * 0.42f,
+            android.graphics.Paint().apply {
+                color = android.graphics.Color.WHITE
+                textAlign = android.graphics.Paint.Align.CENTER
+                textSize = h * 0.25f
+                isFakeBoldText = true
+                isAntiAlias = true
+            }
+        )
     }
 }

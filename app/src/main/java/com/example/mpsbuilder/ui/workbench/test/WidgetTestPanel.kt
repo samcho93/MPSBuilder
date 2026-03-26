@@ -92,6 +92,7 @@ fun WidgetTestPanel(
                     WidgetType.WORKPIECE_SUPPLIER -> SingleOutputTestUI(slots, simulationMemory, onForceOutput, "공급 ON", "공급 OFF")
                     WidgetType.BUZZER -> SingleOutputTestUI(slots, simulationMemory, onForceOutput, "부저 ON", "부저 OFF")
                     WidgetType.STORAGE_BIN -> {} // IO 없음
+                    WidgetType.TABLE -> {} // IO 없음
                     WidgetType.SIGNAL_TOWER -> SignalTowerTestUI(slots, simulationMemory, onForceOutput)
                 }
 

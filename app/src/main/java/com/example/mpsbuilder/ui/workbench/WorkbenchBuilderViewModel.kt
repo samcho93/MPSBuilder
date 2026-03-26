@@ -3,6 +3,7 @@ package com.example.mpsbuilder.ui.workbench
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mpsbuilder.data.ladder.*
+import com.example.mpsbuilder.data.repository.LayoutEntry
 import com.example.mpsbuilder.data.repository.WorkbenchLayoutRepository
 import com.example.mpsbuilder.ui.workbench.model.*
 import com.example.mpsbuilder.ui.workbench.widgets.WidgetRenderer
@@ -78,8 +79,8 @@ class WorkbenchBuilderViewModel @Inject constructor(
     private val _workpieces = MutableStateFlow<List<Workpiece>>(emptyList())
     val workpieces: StateFlow<List<Workpiece>> = _workpieces.asStateFlow()
 
-    private val _layoutNames = MutableStateFlow<List<String>>(emptyList())
-    val layoutNames: StateFlow<List<String>> = _layoutNames.asStateFlow()
+    private val _layoutNames = MutableStateFlow<List<LayoutEntry>>(emptyList())
+    val layoutNames: StateFlow<List<LayoutEntry>> = _layoutNames.asStateFlow()
 
     private val _simulationMemory = MutableStateFlow<Map<String, Boolean>>(emptyMap())
     val simulationMemory: StateFlow<Map<String, Boolean>> = _simulationMemory.asStateFlow()
@@ -242,9 +243,8 @@ class WorkbenchBuilderViewModel @Inject constructor(
                     val wasFwd = out1?.let { _simulationMemory.value[it] } ?: false
                     _prevCylinderState[widgetId] = wasFwd
                     if (out1 != null && out1.isNotBlank()) {
+                        // 메모리만 설정 → tickSimulation의 0.5에서 progress, 0.6에서 투입 처리
                         _simulationMemory.update { it + (out1 to true) }
-                        updateCylinderLS(widget, true)
-                        checkCylinderSupplyWorkpiece(widget, wasFwd = false)
                     }
                 }
             }
@@ -270,7 +270,6 @@ class WorkbenchBuilderViewModel @Inject constructor(
                     val out1 = widget.ioSlots.find { it.key == "OUT1" }?.address
                     if (out1 != null && out1.isNotBlank()) {
                         _simulationMemory.update { it + (out1 to false) }
-                        updateCylinderLS(widget, false)
                     }
                 }
             }
@@ -299,16 +298,13 @@ class WorkbenchBuilderViewModel @Inject constructor(
                     val out2 = widget.ioSlots.find { it.key == "OUT2" }?.address
                     val fwd = out1?.let { _simulationMemory.value[it] } ?: false
                     if (!fwd) {
-                        // 후진→전진
+                        // 후진→전진 — 메모리만 설정, 투입은 tickSimulation 0.6에서
                         out1?.let { _simulationMemory.update { m -> m + (it to true) } }
                         out2?.let { _simulationMemory.update { m -> m + (it to false) } }
-                        updateCylinderLS(widget, true)
-                        checkCylinderSupplyWorkpiece(widget, wasFwd = false)
                     } else {
-                        // 전진→후진
+                        // 전진→후진 — 메모리만 설정, LS는 tickSimulation 0.0에서
                         out1?.let { _simulationMemory.update { m -> m + (it to false) } }
                         out2?.let { _simulationMemory.update { m -> m + (it to true) } }
-                        updateCylinderLS(widget, false)
                     }
                 }
                 // 단동은 pressDown/Up에서 처리
@@ -658,66 +654,9 @@ class WorkbenchBuilderViewModel @Inject constructor(
     }
 
     // ── 시뮬레이션: 실린더 전진 → 연결된 공급기에서 공작물을 실린더 끝 위치에 투입
+    // 공급기 투입은 tickSimulation()의 0.6에서만 처리 (중복 투입 방지)
     fun forceOutput(address: String, value: Boolean) {
         _simulationMemory.update { it + (address to value) }
-
-        if (value) {
-            val widgets = _layout.value.placedWidgets
-            val cylinder = widgets.find { w ->
-                w.widgetType == WidgetType.CYLINDER &&
-                        w.ioSlots.find { it.key == "OUT1" }?.address == address
-            }
-            if (cylinder != null) {
-                val supplier = widgets.find { w ->
-                    w.widgetType == WidgetType.WORKPIECE_SUPPLIER &&
-                            w.linkedCylinderId == cylinder.id
-                }
-                if (supplier != null && supplier.workpieceStack.isNotEmpty()) {
-                    val wpType = supplier.workpieceStack.first()
-                    _layout.update { it.copy(placedWidgets = it.placedWidgets.map { w ->
-                        if (w.id == supplier.id) w.copy(workpieceStack = w.workpieceStack.drop(1))
-                        else w
-                    }) }
-
-                    // 연결된 테이블이 있으면 테이블 중앙에 배치
-                    val linkedTable = supplier.linkedConveyorId?.let { tableId ->
-                        widgets.find { it.id == tableId && it.widgetType == WidgetType.TABLE }
-                    }
-
-                    if (linkedTable != null) {
-                        // 테이블 중앙에 공작물 배치 (컨베이어에 올리지 않음)
-                        val tblSize = WidgetRenderer.getWidgetSize(linkedTable)
-                        val wp = Workpiece(
-                            id = UUID.randomUUID().toString().take(8),
-                            type = wpType,
-                            positionX = linkedTable.positionX + tblSize.width / 2f,
-                            positionY = linkedTable.positionY + tblSize.height / 2f,
-                            onConveyorId = null,  // 테이블 위 (컨베이어 아님)
-                            conveyorProgress = 0f
-                        )
-                        _workpieces.update { it + wp }
-                    } else {
-                        // 테이블 없으면 기존 로직: 가장 가까운 컨베이어에 배치
-                        val cylSize = WidgetRenderer.getWidgetSize(cylinder)
-                        val tipX = cylinder.positionX + cylSize.width
-                        val tipY = cylinder.positionY + cylSize.height / 2f - 12f
-                        val nearConveyor = findNearestConveyor(tipX, tipY, widgets)
-
-                        val wp = Workpiece(
-                            id = UUID.randomUUID().toString().take(8),
-                            type = wpType,
-                            positionX = tipX,
-                            positionY = tipY,
-                            onConveyorId = nearConveyor?.id,
-                            conveyorProgress = if (nearConveyor != null) {
-                                calcConveyorProgress(tipX, tipY, nearConveyor)
-                            } else 0f
-                        )
-                        _workpieces.update { it + wp }
-                    }
-                }
-            }
-        }
     }
 
     /** 좌표 근처의 컨베이어 찾기 (50dp 이내) */
@@ -834,13 +773,12 @@ class WorkbenchBuilderViewModel @Inject constructor(
 
                 if (linkedTable != null) {
                     val tblSize = WidgetRenderer.getWidgetSize(linkedTable)
-                    val wpHalf = 18f  // WP_SIZE(36) / 2
-                    // 테이블 상단 중앙에 배치 — 공작물 반 높이만큼 위로
+                    // 테이블 정중앙에 배치
                     _workpieces.update { it + Workpiece(
                         id = UUID.randomUUID().toString().take(8),
                         type = wpType,
                         positionX = linkedTable.positionX + tblSize.width / 2f,
-                        positionY = linkedTable.positionY - wpHalf + 6f,
+                        positionY = linkedTable.positionY + tblSize.height / 2f,
                         onConveyorId = null, conveyorProgress = 0f
                     ) }
                 } else {
@@ -935,22 +873,24 @@ class WorkbenchBuilderViewModel @Inject constructor(
         }
 
         // 0.8) 테이블 → 컨베이어 이송
-        //      테이블 실린더 전진 >= 0.5 시 테이블 위 공작물을 컨베이어에 이송
-        //      또는 실린더 없이 테이블에 공작물이 있으면 컨베이어로 자동 이송
+        //      테이블에 연결된 별도 실린더 전진 >= 0.5 시 공작물을 컨베이어에 이송
+        //      (공급기 실린더와 테이블 실린더는 별도여야 함)
         widgets.filter { it.widgetType == WidgetType.TABLE }.forEach { table ->
             val cylId = table.linkedCylinderId
             val convId = table.linkedConveyorId ?: return@forEach
             val conv = widgets.find { it.id == convId && it.widgetType == WidgetType.CONVEYOR } ?: return@forEach
 
-            // 실린더가 연결된 경우: 전진 50% 넘는 시점에 이송
-            // 실린더가 없는 경우: 테이블 위에 공작물이 있으면 항상 이송
-            val shouldTransfer = if (cylId != null) {
-                val cylProg = updatedCylProg[cylId] ?: 0f
-                val prevCylProg = cylProgMap[cylId] ?: 0f
-                prevCylProg < 0.5f && cylProg >= 0.5f
-            } else {
-                true  // 실린더 없으면 항상 이송 시도
-            }
+            // 실린더가 연결된 경우에만 실린더 전진으로 이송
+            // 실린더 없으면 이송하지 않음 (수동으로 실린더 연결 필요)
+            if (cylId == null) return@forEach
+
+            // 공급기에 연결된 실린더와 같으면 이송 스킵 (같은 실린더로 투입+이송 불가)
+            val isSupplierCyl = cylId in supplierCylIds
+            if (isSupplierCyl) return@forEach
+
+            val cylProg = updatedCylProg[cylId] ?: 0f
+            val prevCylProg = cylProgMap[cylId] ?: 0f
+            val shouldTransfer = prevCylProg < 0.5f && cylProg >= 0.5f
 
             if (shouldTransfer) {
                 val tblSize = WidgetRenderer.getWidgetSize(table)
@@ -1003,9 +943,11 @@ class WorkbenchBuilderViewModel @Inject constructor(
                     val cs = WidgetRenderer.getWidgetSize(conv)
                     val convLength = if (conv.conveyorConfig?.direction == ConveyorDirection.UP ||
                         conv.conveyorConfig?.direction == ConveyorDirection.DOWN) cs.height else cs.width
-                    val stripeSpacing = 24f * conv.scaleFactor
+                    // 벨트 렌더링과 동일: lineSpacing = w * 0.06f
+                    // 800ms에 줄무늬 1칸 이동, 50ms 틱 → 16틱/사이클
+                    val lineSpacing = convLength * 0.06f
                     val ticksPerCycle = 800f / 50f
-                    val speed = (stripeSpacing / convLength) / ticksPerCycle
+                    val speed = (lineSpacing / convLength) / ticksPerCycle  // = 0.06 / 16 = 0.00375
 
                     val delta = when {
                         noIO -> speed
@@ -1021,15 +963,30 @@ class WorkbenchBuilderViewModel @Inject constructor(
                         wp.copy(conveyorProgress = newProgress, positionX = nx, positionY = ny)
                     } else wp
                 } else {
-                    // 컨베이어에 안착되지 않은 공작물 → 가장 가까운 컨베이어 자동 탐색
-                    val nearConv = findNearestConveyor(wp.positionX, wp.positionY, widgets)
-                    if (nearConv != null) {
-                        val prog = calcConveyorProgress(wp.positionX, wp.positionY, nearConv)
-                        val cs = WidgetRenderer.getWidgetSize(nearConv)
-                        val dir = nearConv.conveyorConfig?.direction ?: ConveyorDirection.RIGHT
-                        val (nx, ny) = progressToPosition(prog, nearConv, cs, dir)
-                        wp.copy(onConveyorId = nearConv.id, conveyorProgress = prog, positionX = nx, positionY = ny)
-                    } else wp
+                    // 컨베이어에 안착되지 않은 공작물
+                    // 테이블 위에 있는 공작물은 자동 안착하지 않음 (0.8에서 실린더로 이송)
+                    val onTable = widgets.any { tbl ->
+                        tbl.widgetType == WidgetType.TABLE && run {
+                            val ts = WidgetRenderer.getWidgetSize(tbl)
+                            wp.positionX >= tbl.positionX - 20f &&
+                            wp.positionX <= tbl.positionX + ts.width + 20f &&
+                            wp.positionY >= tbl.positionY - 30f &&
+                            wp.positionY <= tbl.positionY + ts.height + 20f
+                        }
+                    }
+                    if (onTable) {
+                        wp  // 테이블 위 → 그대로 유지
+                    } else {
+                        // 테이블 밖 → 가장 가까운 컨베이어에 자동 안착
+                        val nearConv = findNearestConveyor(wp.positionX, wp.positionY, widgets)
+                        if (nearConv != null) {
+                            val prog = calcConveyorProgress(wp.positionX, wp.positionY, nearConv)
+                            val cs = WidgetRenderer.getWidgetSize(nearConv)
+                            val dir = nearConv.conveyorConfig?.direction ?: ConveyorDirection.RIGHT
+                            val (nx, ny) = progressToPosition(prog, nearConv, cs, dir)
+                            wp.copy(onConveyorId = nearConv.id, conveyorProgress = prog, positionX = nx, positionY = ny)
+                        } else wp
+                    }
                 }
             }
 
@@ -1189,8 +1146,9 @@ class WorkbenchBuilderViewModel @Inject constructor(
         }
     }
 
-    // ── 저장 / 불러오기 (래더 데이터 포함)
-    fun saveLayout(name: String) = viewModelScope.launch {
+    // ── 저장 / 불러오기
+    // withLadder: true → .mpsx (위젯+래더), false → .mps (위젯만)
+    fun saveLayout(name: String, withLadder: Boolean = false) = viewModelScope.launch {
         _layout.update {
             it.copy(
                 name = name,
@@ -1198,7 +1156,7 @@ class WorkbenchBuilderViewModel @Inject constructor(
                 ladderIoLabels = _ladderIoLabels.value
             )
         }
-        layoutRepository.save(_layout.value)
+        layoutRepository.save(_layout.value, withLadder = withLadder)
         refreshLayoutList()
     }
     fun loadLayout(name: String) = viewModelScope.launch {

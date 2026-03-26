@@ -8,57 +8,84 @@ import kotlinx.serialization.json.Json
 import javax.inject.Inject
 
 interface WorkbenchLayoutRepository {
-    suspend fun save(layout: WorkbenchLayout)
+    /** 저장 — withLadder=true면 .mpsx, false면 .mps */
+    suspend fun save(layout: WorkbenchLayout, withLadder: Boolean = false)
+    /** autosave 전용 — 파일명 지정 */
     suspend fun saveAs(fileName: String, layout: WorkbenchLayout)
     suspend fun load(name: String): WorkbenchLayout?
-    suspend fun listLayouts(): List<String>
+    /** 저장된 레이아웃 목록 (이름 + 확장자) */
+    suspend fun listLayouts(): List<LayoutEntry>
     suspend fun delete(name: String)
 }
+
+/** 목록 항목 — 이름과 래더 포함 여부 */
+data class LayoutEntry(
+    val name: String,
+    val hasLadder: Boolean  // .mpsx면 true
+)
 
 class WorkbenchLayoutRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context
 ) : WorkbenchLayoutRepository {
 
     private val json = Json { prettyPrint = true; ignoreUnknownKeys = true }
-    private val EXT = "mps"  // 확장자
 
     private fun mpsDir() = context.filesDir.resolve("mpsbuilder").also { it.mkdirs() }
 
-    override suspend fun save(layout: WorkbenchLayout) {
-        mpsDir().resolve("${layout.name}.$EXT")
-            .writeText(json.encodeToString(layout))
+    override suspend fun save(layout: WorkbenchLayout, withLadder: Boolean) {
+        val ext = if (withLadder) "mpsx" else "mps"
+        val saveData = if (!withLadder) {
+            // .mps — 래더 데이터 제거
+            layout.copy(ladderRungs = emptyList(), ladderIoLabels = emptyMap())
+        } else {
+            layout
+        }
+        // 이전 확장자 파일 삭제 (mps↔mpsx 전환 시)
+        mpsDir().resolve("${layout.name}.mps").delete()
+        mpsDir().resolve("${layout.name}.mpsx").delete()
+        mpsDir().resolve("${layout.name}.$ext")
+            .writeText(json.encodeToString(saveData))
     }
 
     override suspend fun saveAs(fileName: String, layout: WorkbenchLayout) {
-        mpsDir().resolve("$fileName.$EXT")
+        // autosave용 — 항상 .mps 확장자, 래더 포함
+        mpsDir().resolve("$fileName.mps")
             .writeText(json.encodeToString(layout))
     }
 
     override suspend fun load(name: String): WorkbenchLayout? {
-        // .mps 먼저, 없으면 .json으로 폴백
-        val mpsFile = mpsDir().resolve("$name.$EXT")
-        if (mpsFile.exists()) {
-            return json.decodeFromString(mpsFile.readText())
-        }
-        val jsonFile = mpsDir().resolve("$name.json")
-        if (jsonFile.exists()) {
-            return json.decodeFromString(jsonFile.readText())
+        // .mpsx 우선, 없으면 .mps, 없으면 .json 폴백
+        listOf("mpsx", "mps", "json").forEach { ext ->
+            val file = mpsDir().resolve("$name.$ext")
+            if (file.exists()) {
+                return try {
+                    json.decodeFromString<WorkbenchLayout>(file.readText())
+                } catch (_: Exception) { null }
+            }
         }
         return null
     }
 
-    override suspend fun listLayouts(): List<String> =
-        mpsDir().listFiles()
-            ?.filter {
-                (it.extension == EXT || it.extension == "json") &&
+    override suspend fun listLayouts(): List<LayoutEntry> {
+        val dir = mpsDir()
+        val files = dir.listFiles() ?: return emptyList()
+        return files
+            .filter {
+                it.extension in listOf("mps", "mpsx", "json") &&
                         it.nameWithoutExtension != "__autosave__"
             }
-            ?.map { it.nameWithoutExtension }
-            ?.distinct()
-            ?: emptyList()
+            .map { file ->
+                LayoutEntry(
+                    name = file.nameWithoutExtension,
+                    hasLadder = file.extension == "mpsx"
+                )
+            }
+            .distinctBy { it.name }
+    }
 
     override suspend fun delete(name: String) {
-        mpsDir().resolve("$name.$EXT").delete()
-        mpsDir().resolve("$name.json").delete()  // 레거시 json도 정리
+        mpsDir().resolve("$name.mps").delete()
+        mpsDir().resolve("$name.mpsx").delete()
+        mpsDir().resolve("$name.json").delete()
     }
 }

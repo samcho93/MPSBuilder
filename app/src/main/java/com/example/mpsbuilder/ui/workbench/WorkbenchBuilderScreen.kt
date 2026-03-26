@@ -158,6 +158,15 @@ fun WorkbenchBuilderScreen(
                 title = {
                     Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                         Text("MPS Builder")
+                        // 현재 파일명 표시
+                        if (layout.name != "NewLayout") {
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "— ${layout.name}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                            )
+                        }
                         if (isTestMode) {
                             Spacer(Modifier.width(8.dp))
                             Surface(
@@ -248,8 +257,10 @@ fun WorkbenchBuilderScreen(
                         // 저장 (현재 이름, 새 레이아웃이면 다이얼로그)
                         IconButton(onClick = {
                             if (layout.name != "NewLayout") {
-                                viewModel.saveLayout(layout.name)
-                                Toast.makeText(context, "저장: ${layout.name}", Toast.LENGTH_SHORT).show()
+                                val withLadder = ladderRungs.isNotEmpty()
+                                viewModel.saveLayout(layout.name, withLadder)
+                                val ext = if (withLadder) "mpsx" else "mps"
+                                Toast.makeText(context, "저장: ${layout.name}.$ext", Toast.LENGTH_SHORT).show()
                             } else {
                                 showSaveDialog = true
                             }
@@ -416,10 +427,12 @@ fun WorkbenchBuilderScreen(
         SaveLayoutDialog(
             title = "레이아웃 저장",
             currentName = layout.name,
-            onSave = { name ->
-                viewModel.saveLayout(name)
+            showLadderOption = ladderRungs.isNotEmpty(),
+            onSave = { name, withLadder ->
+                viewModel.saveLayout(name, withLadder)
                 showSaveDialog = false
-                Toast.makeText(context, "저장 완료: $name", Toast.LENGTH_SHORT).show()
+                val ext = if (withLadder) "mpsx" else "mps"
+                Toast.makeText(context, "저장: $name.$ext", Toast.LENGTH_SHORT).show()
             },
             onDismiss = { showSaveDialog = false }
         )
@@ -428,17 +441,19 @@ fun WorkbenchBuilderScreen(
         SaveLayoutDialog(
             title = "다른 이름으로 저장",
             currentName = layout.name,
-            onSave = { name ->
-                viewModel.saveLayout(name)
+            showLadderOption = ladderRungs.isNotEmpty(),
+            onSave = { name, withLadder ->
+                viewModel.saveLayout(name, withLadder)
                 showSaveAsDialog = false
-                Toast.makeText(context, "저장 완료: $name", Toast.LENGTH_SHORT).show()
+                val ext = if (withLadder) "mpsx" else "mps"
+                Toast.makeText(context, "저장: $name.$ext", Toast.LENGTH_SHORT).show()
             },
             onDismiss = { showSaveAsDialog = false }
         )
     }
     if (showLoadDialog) {
         LoadLayoutDialog(
-            layoutNames = layoutNames,
+            layoutEntries = layoutNames,
             onLoad = { name -> viewModel.loadLayout(name); showLoadDialog = false },
             onDelete = { name -> viewModel.deleteLayout(name) },
             onDismiss = { showLoadDialog = false }
@@ -475,22 +490,51 @@ fun WorkbenchBuilderScreen(
 private fun SaveLayoutDialog(
     title: String = "레이아웃 저장",
     currentName: String,
-    onSave: (String) -> Unit,
+    showLadderOption: Boolean = false,
+    onSave: (name: String, withLadder: Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
     var name by remember { mutableStateOf(currentName) }
+    var withLadder by remember { mutableStateOf(showLadderOption) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            OutlinedTextField(
-                value = name, onValueChange = { name = it },
-                label = { Text("레이아웃 이름") },
-                singleLine = true, modifier = Modifier.fillMaxWidth()
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = name, onValueChange = { name = it },
+                    label = { Text("레이아웃 이름") },
+                    singleLine = true, modifier = Modifier.fillMaxWidth()
+                )
+                // 파일 형식 선택
+                Row(
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("형식: ", style = MaterialTheme.typography.bodySmall)
+                    FilterChip(
+                        selected = !withLadder,
+                        onClick = { withLadder = false },
+                        label = { Text(".mps", style = MaterialTheme.typography.labelSmall) }
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    FilterChip(
+                        selected = withLadder,
+                        onClick = { withLadder = true },
+                        label = { Text(".mpsx", style = MaterialTheme.typography.labelSmall) },
+                        enabled = showLadderOption
+                    )
+                }
+                Text(
+                    if (withLadder) "위젯 + 래더 함께 저장" else "위젯만 저장",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         },
         confirmButton = {
-            TextButton(onClick = { if (name.isNotBlank()) onSave(name) }) { Text("저장") }
+            TextButton(onClick = { if (name.isNotBlank()) onSave(name, withLadder) }) { Text("저장") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("취소") } }
     )
@@ -498,7 +542,7 @@ private fun SaveLayoutDialog(
 
 @Composable
 private fun LoadLayoutDialog(
-    layoutNames: List<String>,
+    layoutEntries: List<com.example.mpsbuilder.data.repository.LayoutEntry>,
     onLoad: (String) -> Unit,
     onDelete: (String) -> Unit,
     onDismiss: () -> Unit
@@ -507,17 +551,26 @@ private fun LoadLayoutDialog(
         onDismissRequest = onDismiss,
         title = { Text("레이아웃 불러오기") },
         text = {
-            if (layoutNames.isEmpty()) {
+            if (layoutEntries.isEmpty()) {
                 Text("저장된 레이아웃이 없습니다.")
             } else {
                 Column {
-                    layoutNames.forEach { name ->
+                    layoutEntries.forEach { entry ->
                         Row(
                             Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                         ) {
-                            TextButton(onClick = { onLoad(name) }) { Text(name) }
-                            IconButton(onClick = { onDelete(name) }) {
+                            TextButton(onClick = { onLoad(entry.name) }) {
+                                Text(entry.name)
+                            }
+                            Text(
+                                if (entry.hasLadder) ".mpsx" else ".mps",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (entry.hasLadder) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            IconButton(onClick = { onDelete(entry.name) }) {
                                 Icon(Icons.Default.Delete, "삭제",
                                     tint = MaterialTheme.colorScheme.error)
                             }

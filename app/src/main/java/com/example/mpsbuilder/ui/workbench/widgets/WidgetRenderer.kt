@@ -750,47 +750,49 @@ object WidgetRenderer {
     }
 
     // ── 테이블 (공작물 전달대)
+    // ── 테이블 (탑뷰 — 위에서 보는 직사각형 테이블)
     private fun DrawScope.drawTable(size: Size) {
         val w = size.width
         val h = size.height
+        val legInset = w * 0.08f
+        val legSize = w * 0.08f
 
-        // 테이블 상판
+        // 그림자 (약간 아래로)
+        drawRoundRect(
+            color = Color(0x226D4C41),
+            topLeft = Offset(3f, 3f),
+            size = Size(w, h),
+            cornerRadius = CornerRadius(6f)
+        )
+
+        // 테이블 상판 (위에서 보는 직사각형)
         drawRoundRect(
             color = Color(0xFF8D6E63),
-            topLeft = Offset(0f, h * 0.1f),
-            size = Size(w, h * 0.5f),
+            size = Size(w, h),
+            cornerRadius = CornerRadius(6f)
+        )
+
+        // 상판 테두리 (안쪽 밝은 색 — 상판 표면)
+        drawRoundRect(
+            color = Color(0xFFBCAAA4),
+            topLeft = Offset(4f, 4f),
+            size = Size(w - 8f, h - 8f),
             cornerRadius = CornerRadius(4f)
         )
-        // 상판 위 무늬
-        drawRoundRect(
-            color = Color(0xFFA1887F),
-            topLeft = Offset(w * 0.05f, h * 0.15f),
-            size = Size(w * 0.9f, h * 0.4f),
-            cornerRadius = CornerRadius(2f)
-        )
-        // 다리 좌
-        drawRect(
-            color = Color(0xFF6D4C41),
-            topLeft = Offset(w * 0.1f, h * 0.6f),
-            size = Size(w * 0.1f, h * 0.38f)
-        )
-        // 다리 우
-        drawRect(
-            color = Color(0xFF6D4C41),
-            topLeft = Offset(w * 0.8f, h * 0.6f),
-            size = Size(w * 0.1f, h * 0.38f)
-        )
-        // T 라벨
-        drawContext.canvas.nativeCanvas.drawText(
-            "T",
-            w / 2f, h * 0.42f,
-            android.graphics.Paint().apply {
-                color = android.graphics.Color.WHITE
-                textAlign = android.graphics.Paint.Align.CENTER
-                textSize = h * 0.25f
-                isFakeBoldText = true
-                isAntiAlias = true
-            }
-        )
+
+        // 네 다리 (위에서 보면 작은 사각형, 모서리 근처)
+        val legColor = Color(0xFF5D4037)
+        // 좌상
+        drawRect(legColor, Offset(legInset, legInset), Size(legSize, legSize))
+        // 우상
+        drawRect(legColor, Offset(w - legInset - legSize, legInset), Size(legSize, legSize))
+        // 좌하
+        drawRect(legColor, Offset(legInset, h - legInset - legSize), Size(legSize, legSize))
+        // 우하
+        drawRect(legColor, Offset(w - legInset - legSize, h - legInset - legSize), Size(legSize, legSize))
+
+        // 중앙 십자 무늬 (나무 결 느낌)
+        drawLine(Color(0x338D6E63), Offset(w / 2f, 8f), Offset(w / 2f, h - 8f), strokeWidth = 1f)
+        drawLine(Color(0x338D6E63), Offset(8f, h / 2f), Offset(w - 8f, h / 2f), strokeWidth = 1f)
     }
 }

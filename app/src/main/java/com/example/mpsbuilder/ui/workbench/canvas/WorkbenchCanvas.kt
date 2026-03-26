@@ -279,9 +279,16 @@ fun WorkbenchCanvas(
             // 1. 배경 + 격자
             WorkbenchRenderer.drawBackground(this, layout, panOffset, zoomScale)
 
-            // 2. 위젯 렌더링
+            // 2. 위젯 렌더링 — 바닥 위젯(테이블/컨베이어/적재함)을 먼저 그림
             layout.placedWidgets
-                .sortedBy { it.zOrder }
+                .sortedWith(compareBy<PlacedWidgetState> { w ->
+                    when (w.widgetType) {
+                        com.example.mpsbuilder.ui.workbench.model.WidgetType.TABLE -> 0
+                        com.example.mpsbuilder.ui.workbench.model.WidgetType.CONVEYOR -> 1
+                        com.example.mpsbuilder.ui.workbench.model.WidgetType.STORAGE_BIN -> 2
+                        else -> 10
+                    }
+                }.thenBy { it.zOrder })
                 .forEach { widget ->
                     withTransform({
                         val cx = (widget.positionX + panOffset.x) * zoomScale

@@ -25,15 +25,18 @@ import java.util.UUID
 fun ElementToolbar(
     hasSelection: Boolean,
     isMultiSelect: Boolean,
+    isOverwriteMode: Boolean = true,
     canUndo: Boolean,
     canRedo: Boolean,
     onPlaceElement: (LadderElement) -> Unit,
     onPlaceHLine: () -> Unit,
     onToggleVLine: () -> Unit,
     onAddRow: () -> Unit,
+    onAddRung: () -> Unit = {},
     onDeleteElement: () -> Unit,
     onDeleteRow: () -> Unit,
     onToggleMultiSelect: () -> Unit,
+    onToggleEditMode: () -> Unit = {},
     onUndo: () -> Unit,
     onRedo: () -> Unit,
     onOpenCommandPalette: () -> Unit,
@@ -131,7 +134,8 @@ fun ElementToolbar(
             horizontalArrangement = Arrangement.spacedBy(2.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            ToolBtn("+행", "행추가") { onAddRow() }
+            ToolBtn("+행", "OR행") { onAddRow() }
+            ToolBtn("+런그", "런그") { onAddRung() }
 
             if (hasSelection) {
                 ToolBtn("요소삭제", "삭제") { onDeleteElement() }
@@ -139,6 +143,21 @@ fun ElementToolbar(
             }
 
             Spacer(Modifier.weight(1f))
+
+            // Overwrite / Edit 모드 토글
+            FilterChip(
+                selected = !isOverwriteMode,
+                onClick = onToggleEditMode,
+                label = {
+                    Text(
+                        if (isOverwriteMode) "OVR" else "EDIT",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                modifier = Modifier.height(28.dp)
+            )
+            Spacer(Modifier.width(4.dp))
 
             // 다중선택 토글
             FilterChip(

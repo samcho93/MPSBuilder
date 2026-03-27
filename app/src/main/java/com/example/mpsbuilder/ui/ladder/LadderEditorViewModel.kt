@@ -28,6 +28,13 @@ class LadderEditorViewModel {
     private val _isMultiSelect = MutableStateFlow(false)
     val isMultiSelect: StateFlow<Boolean> = _isMultiSelect.asStateFlow()
 
+    // Overwrite Mode: 세로선 추가 시 행을 추가하지 않음
+    // Edit Mode: 세로선 추가 시 아래 행이 없으면 자동 추가
+    private val _isOverwriteMode = MutableStateFlow(true)  // 기본: Overwrite
+    val isOverwriteMode: StateFlow<Boolean> = _isOverwriteMode.asStateFlow()
+
+    fun toggleEditMode() { _isOverwriteMode.update { !it } }
+
     private val _ioLabels = MutableStateFlow<Map<String, String>>(emptyMap())
     val ioLabels: StateFlow<Map<String, String>> = _ioLabels.asStateFlow()
 
@@ -137,6 +144,7 @@ class LadderEditorViewModel {
     // ══════════════════════════════════
 
     fun selectCell(pos: CellPosition) {
+        android.util.Log.d("LADDER_SEL", "selectCell: pos=(${pos.rungIdx},${pos.row},${pos.col})")
         if (_isMultiSelect.value) {
             _selectedCells.update {
                 if (pos in it) it - pos else it + pos
@@ -166,7 +174,11 @@ class LadderEditorViewModel {
     // ══════════════════════════════════
 
     fun placeElement(element: LadderElement): LadderElement {
-        val pos = _selectedCell.value ?: return element
+        android.util.Log.d("LADDER_PLACE", "placeElement called, selectedCell=${_selectedCell.value}, element=${element::class.simpleName}")
+        val pos = _selectedCell.value ?: run {
+            android.util.Log.d("LADDER_PLACE", "→ selectedCell is NULL, returning")
+            return element
+        }
         pushUndo()
 
         // 주소 자동 할당
@@ -179,17 +191,49 @@ class LadderEditorViewModel {
             if (pos.row >= rung.grid.size) return@update rungs
 
             val grid = rung.grid.map { it.toMutableList() }.toMutableList()
-            val row = grid[pos.row]
-
-            // 출력 요소는 OUTPUT_COL에만 배치
             val targetCol = if (isOutputElement(assigned)) LadderRung.OUTPUT_COL else pos.col
+
+            // EDIT 모드: 대상 셀에 이미 의미 있는 요소가 있으면 새 행 삽입 후 거기에 배치
+            val existingElement = grid[pos.row].getOrNull(targetCol)?.element
+            val hasExisting = existingElement != null && existingElement !is LadderElement.HorizontalLine
+            val targetRow = if (!_isOverwriteMode.value && hasExisting && !isOutputElement(assigned)) {
+                // EDIT: 새 행 삽입
+                grid.add(pos.row + 1, LadderRung.emptyRow().toMutableList())
+                // 위 행에 수직선 연결
+                grid[pos.row][targetCol] = grid[pos.row][targetCol].copy(hasBottom = true)
+                pos.row + 1
+            } else {
+                pos.row
+            }
+
+            val row = grid[targetRow]
             if (targetCol < row.size) {
                 row[targetCol] = row[targetCol].copy(element = assigned)
 
-                // 출력 요소 배치 시 접점~출력 사이 수평선 자동 채움
+                // 출력 요소 배치 시: 수평선 시작점 결정
                 if (isOutputElement(assigned)) {
+                    android.util.Log.d("LADDER_PLACE", "OUTPUT: pos=(${ pos.rungIdx},${pos.row},${pos.col}) targetRow=$targetRow targetCol=$targetCol overwrite=${_isOverwriteMode.value}")
+                    // 시작점 = 신호가 들어오는 열의 다음 열
+                    val startCol: Int
                     val lastContact = findLastContactCol(row)
-                    for (c in (lastContact + 1) until LadderRung.OUTPUT_COL) {
+                    if (lastContact >= 0) {
+                        // 현재 행에 접점이 있으면 그 뒤부터
+                        startCol = lastContact + 1
+                    } else if (targetRow > 0) {
+                        // 위 행에서 세로선으로 연결된 열 찾기
+                        val aboveRow = grid[targetRow - 1]
+                        var vLineCol = -1
+                        for (c in (LadderRung.CONTACT_COLS - 1) downTo 0) {
+                            if (aboveRow[c].hasBottom) { vLineCol = c; break }
+                        }
+                        startCol = if (vLineCol >= 0) vLineCol + 1 else pos.col + 1
+                    } else {
+                        // 첫 행이고 접점 없으면 커서 열 다음부터
+                        startCol = pos.col + 1
+                    }
+                    android.util.Log.d("LADDER_PLACE", "startCol=$startCol lastContact=$lastContact grid.size=${grid.size}")
+                    // startCol ~ OUTPUT_COL 사이 빈 셀에 수평선 채움
+                    for (c in startCol until LadderRung.OUTPUT_COL) {
                         if (row[c].element == null) {
                             row[c] = row[c].copy(element = LadderElement.HorizontalLine(id = uuid()))
                         }
@@ -197,7 +241,7 @@ class LadderEditorViewModel {
                 }
             }
 
-            grid[pos.row] = row
+            grid[targetRow] = row
             rungList[pos.rungIdx] = rung.copy(grid = grid)
             rungList
         }
@@ -210,8 +254,19 @@ class LadderEditorViewModel {
             }
         }
 
-        // 접점 배치 후 커서를 다음 열로 자동 이동
-        if (!isOutputElement(assigned)) {
+        // GX-Works2 스타일 커서 이동
+        if (isOutputElement(assigned)) {
+            // 출력 배치 후 → 다음 런그 첫 셀로 이동 (없으면 생성)
+            val nextRungIdx = pos.rungIdx + 1
+            if (nextRungIdx >= _rungs.value.size) {
+                // 다음 런그 없으면 자동 추가
+                _rungs.update { it + LadderRung.empty() }
+            }
+            val newPos = CellPosition(nextRungIdx, 0, 0)
+            _selectedCell.value = newPos
+            _selectedCells.value = setOf(newPos)
+        } else {
+            // 접점 배치 후 → 오른쪽으로 이동
             val nextCol = pos.col + 1
             if (nextCol < LadderRung.OUTPUT_COL) {
                 val newPos = CellPosition(pos.rungIdx, pos.row, nextCol)
@@ -233,21 +288,28 @@ class LadderEditorViewModel {
     }
 
     fun toggleVerticalLine() {
-        val pos = _selectedCell.value ?: return
+        android.util.Log.d("LADDER_VLINE", "toggleVerticalLine called, selectedCell=${_selectedCell.value}")
+        val pos = _selectedCell.value ?: run {
+            android.util.Log.d("LADDER_VLINE", "→ selectedCell is NULL, returning")
+            return
+        }
         pushUndo()
-        val rungs = _rungs.value
-        val rung = rungs.getOrNull(pos.rungIdx) ?: return
-        val cell = rung.grid.getOrNull(pos.row)?.getOrNull(pos.col) ?: return
-        val newHasBottom = !cell.hasBottom
 
         _rungs.update { rungList ->
             val list = rungList.toMutableList()
+            if (pos.rungIdx >= list.size) return@update rungList
+            val rung = list[pos.rungIdx]
+            val cell = rung.grid.getOrNull(pos.row)?.getOrNull(pos.col) ?: return@update rungList
+            val newHasBottom = !cell.hasBottom
+
             val grid = rung.grid.map { it.toMutableList() }.toMutableList()
             grid[pos.row][pos.col] = cell.copy(hasBottom = newHasBottom)
 
-            // 수직선 ON → 아래 행이 없으면 추가
-            if (newHasBottom && pos.row >= grid.size - 1) {
+            android.util.Log.d("LADDER_VLINE", "pos=(${pos.rungIdx},${pos.row},${pos.col}) newHasBottom=$newHasBottom gridRows=${grid.size} overwrite=${_isOverwriteMode.value}")
+            if (newHasBottom && pos.row >= grid.size - 1 && !_isOverwriteMode.value) {
+                // EDIT 모드: 아래 행 없으면 자동 추가
                 grid.add(LadderRung.emptyRow().toMutableList())
+                android.util.Log.d("LADDER_VLINE", "→ EDIT: 행 추가됨, 새 gridRows=${grid.size}")
             }
 
             list[pos.rungIdx] = rung.copy(grid = grid)
@@ -309,35 +371,58 @@ class LadderEditorViewModel {
         _isModified.value = true
     }
 
+    /**
+     * +행: 현재 런그에 OR 행 추가 (커서 위치 아래에 삽입)
+     * 세로선 자동 연결: 커서 열에 hasBottom 설정 (col > 0일 때)
+     */
     fun addRow() {
         val pos = _selectedCell.value
         pushUndo()
         if (pos != null) {
-            // 선택된 행 아래에 새 행 추가
             _rungs.update { rungs ->
                 val list = rungs.toMutableList()
                 if (pos.rungIdx < list.size) {
-                    val rung = list[pos.rungIdx]
-                    val grid = rung.grid.toMutableList()
-                    grid.add(pos.row + 1, LadderRung.emptyRow())
-                    list[pos.rungIdx] = rung.copy(grid = grid)
+                    val r = list[pos.rungIdx]
+                    val grid = r.grid.map { it.toMutableList() }.toMutableList()
+                    // 새 빈 행 삽입 (현재 행 아래)
+                    grid.add(pos.row + 1, LadderRung.emptyRow().toMutableList())
+                    // 세로선 자동 연결 (col > 0이면 현재 행의 커서 열에 hasBottom)
+                    if (pos.col > 0) {
+                        grid[pos.row][pos.col] = grid[pos.row][pos.col].copy(hasBottom = true)
+                    }
+                    list[pos.rungIdx] = r.copy(grid = grid.map { it.toList() })
                 }
                 list
             }
-            // 커서를 새 행의 첫 열로 이동
-            val newPos = CellPosition(pos.rungIdx, pos.row + 1, 0)
+            // 커서를 새 행으로 이동
+            val newPos = CellPosition(pos.rungIdx, pos.row + 1, if (pos.col > 0) pos.col else 0)
             _selectedCell.value = newPos
             _selectedCells.value = setOf(newPos)
         } else {
             // 선택 없으면 새 런그 추가
-            val newRungIdx = _rungs.value.size
-            _rungs.update { it + LadderRung.empty() }
-            // 커서를 새 런그의 첫 셀로
-            val newPos = CellPosition(newRungIdx, 0, 0)
-            _selectedCell.value = newPos
-            _selectedCells.value = setOf(newPos)
+            addRungInternal(_rungs.value.size)
         }
         _isModified.value = true
+    }
+
+    /** +런그: 새 런그 추가 (현재 런그 아래에 독립 회로 삽입) */
+    fun addRung() {
+        pushUndo()
+        val pos = _selectedCell.value
+        val insertAt = if (pos != null) pos.rungIdx + 1 else _rungs.value.size
+        addRungInternal(insertAt)
+        _isModified.value = true
+    }
+
+    private fun addRungInternal(insertAt: Int) {
+        _rungs.update { rungs ->
+            val list = rungs.toMutableList()
+            list.add(insertAt, LadderRung.empty())
+            list
+        }
+        val newPos = CellPosition(insertAt, 0, 0)
+        _selectedCell.value = newPos
+        _selectedCells.value = setOf(newPos)
     }
 
     // ══════════════════════════════════

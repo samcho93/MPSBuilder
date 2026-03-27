@@ -5,6 +5,8 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -37,17 +39,32 @@ fun LadderEditorCanvas(
     val density = LocalDensity.current
     val cellHDp: Dp = 72.dp
 
-    // 수평 fit: 사용 열 수 계산
+    // 수평 fit: 사용 열 수 계산 (요소 또는 세로선이 있는 열 포함)
     val usedCols = rungs.maxOfOrNull { rung ->
         rung.grid.maxOfOrNull { row ->
-            val lastUsed = row.indexOfLast { it.element != null }
+            val lastUsed = row.indexOfLast { it.element != null || it.hasBottom }
             if (lastUsed >= 0) lastUsed + 1 else 1
         } ?: 1
     } ?: LadderRung.GRID_COLS
     val displayCols = maxOf(usedCols, 6).coerceAtMost(LadderRung.GRID_COLS)
 
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+
+    // selectedCell 변경 시 해당 런그로 자동 스크롤
+    LaunchedEffect(selectedCell?.rungIdx) {
+        selectedCell?.let { pos ->
+            // 현재 보이는 범위 밖이면 스크롤
+            val visibleItems = listState.layoutInfo.visibleItemsInfo
+            val isVisible = visibleItems.any { it.index == pos.rungIdx }
+            if (!isVisible) {
+                listState.animateScrollToItem(pos.rungIdx)
+            }
+        }
+    }
+
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
             itemsIndexed(rungs, key = { _, r -> r.id }) { rungIdx, rung ->
                 val rungHeightDp = cellHDp * rung.rowCount + 4.dp
 

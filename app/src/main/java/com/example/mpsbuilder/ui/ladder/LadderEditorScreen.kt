@@ -41,6 +41,7 @@ fun LadderEditorDialog(
     val selectedCell by vm.selectedCell.collectAsState()
     val selectedCells by vm.selectedCells.collectAsState()
     val isMultiSelect by vm.isMultiSelect.collectAsState()
+    val isOverwriteMode by vm.isOverwriteMode.collectAsState()
     val canUndo by vm.canUndo.collectAsState()
     val canRedo by vm.canRedo.collectAsState()
     val ioLabels by vm.ioLabels.collectAsState()
@@ -212,15 +213,32 @@ fun LadderEditorDialog(
                 ElementToolbar(
                     hasSelection = selectedCells.isNotEmpty(),
                     isMultiSelect = isMultiSelect,
+                    isOverwriteMode = isOverwriteMode,
                     canUndo = canUndo,
                     canRedo = canRedo,
-                    onPlaceElement = { el -> vm.placeElement(el) },
+                    onPlaceElement = { el ->
+                        // GX-Works2 방식: 배치 전 위치 캡처 → 배치 → 즉시 주소 입력
+                        val posBeforePlace = vm.selectedCell.value
+                        val placed = vm.placeElement(el)
+                        // 배치된 위치는 출력이면 OUTPUT_COL, 아니면 원래 위치
+                        val placedPos = if (posBeforePlace != null) {
+                            val targetCol = if (placed.isOutput()) LadderRung.OUTPUT_COL else posBeforePlace.col
+                            LadderEditorViewModel.CellPosition(posBeforePlace.rungIdx, posBeforePlace.row, targetCol)
+                        } else null
+                        if (placed !is LadderElement.HorizontalLine && placedPos != null) {
+                            editingElement = placed
+                            editingPosition = placedPos
+                            showAddressEdit = true
+                        }
+                    },
                     onPlaceHLine = { vm.placeHorizontalLine() },
                     onToggleVLine = { vm.toggleVerticalLine() },
                     onAddRow = { vm.addRow() },
+                    onAddRung = { vm.addRung() },
                     onDeleteElement = { vm.deleteSelectedElements() },
                     onDeleteRow = { vm.deleteRow() },
                     onToggleMultiSelect = { vm.toggleMultiSelect() },
+                    onToggleEditMode = { vm.toggleEditMode() },
                     onUndo = { vm.undo() },
                     onRedo = { vm.redo() },
                     onOpenCommandPalette = { showCommandPalette = true }
@@ -261,7 +279,7 @@ fun LadderEditorDialog(
         )
     }
 
-    // ── 주소 편집 다이얼로그
+    // ── 주소 편집 다이얼로그 (GX-Works2: 배치 즉시 표시)
     if (showAddressEdit && editingElement != null && editingPosition != null) {
         AddressEditDialog(
             element = editingElement!!,
@@ -270,12 +288,20 @@ fun LadderEditorDialog(
             onConfirm = { updated ->
                 val pos = editingPosition!!
                 vm.replaceElement(pos.rungIdx, pos.row, pos.col, updated)
+                // IO 라벨 자동 등록
+                updated.address?.let { addr ->
+                    if (updated.label.isNotBlank()) {
+                        vm.setLabel(addr, updated.label)
+                    }
+                }
                 showAddressEdit = false
                 editingElement = null
+                editingPosition = null
             },
             onDismiss = {
                 showAddressEdit = false
                 editingElement = null
+                editingPosition = null
             }
         )
     }
